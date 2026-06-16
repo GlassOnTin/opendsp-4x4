@@ -33,6 +33,7 @@ The protocol is the single source of truth and is implemented per-platform:
 ## Repo layout
 - `PROTOCOL.md` — the wire protocol (frame format, command codes, data model).
 - `web/` — TypeScript protocol codec + WebHID app.
+- `docs/CAPTURING.md` — record a USB session to help add support for more devices.
 
 ## Legal
 Independent, **clean-room** interoperability implementation: the control protocol was
