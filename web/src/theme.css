@@ -1,0 +1,45 @@
+/* openDSP-4x4 — dark "pro-audio" theme tokens */
+:root {
+  color-scheme: dark;
+  --bg: #0b0e13;
+  --bg-panel: #141922;
+  --bg-elev: #1b212c;
+  --line: #283040;
+  --text: #e8edf4;
+  --text-dim: #93a0b4;
+  --accent: #38bdf8;          /* cyan */
+  --accent-2: #a78bfa;        /* violet */
+  --good: #4ade80;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  /* per-channel accents (In A–D, Out 1–4) */
+  --ch-0: #f472b6; --ch-1: #fb923c; --ch-2: #facc15; --ch-3: #a3e635;
+  --ch-4: #38bdf8; --ch-5: #818cf8; --ch-6: #c084fc; --ch-7: #2dd4bf;
+  --radius: 10px;
+  --glow: 0 0 0 1px rgba(56,189,248,.25), 0 0 16px -4px rgba(56,189,248,.45);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: radial-gradient(1200px 600px at 70% -10%, #11202e 0%, var(--bg) 55%);
+  color: var(--text);
+  font-size: 14px;
+}
+#app { min-height: 100vh; display: flex; flex-direction: column; }
+
+button {
+  background: var(--bg-elev); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: .5rem .85rem; font: inherit; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: linear-gradient(180deg, #1d4ed8, #1e40af); border-color: #2563eb; }
+button.primary:hover { box-shadow: var(--glow); }
+
+.muted { color: var(--text-dim); }
+.mono { font-family: ui-monospace, "JetBrains Mono", monospace; }

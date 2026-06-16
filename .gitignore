@@ -1,0 +1,14 @@
+# Dependencies & build output
+node_modules/
+dist/
+build/
+
+# Logs & local env
+*.log
+.env
+.env.*.local
+
+# Editor / OS cruft
+.DS_Store
+.vscode/
+.idea/
