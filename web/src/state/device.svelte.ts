@@ -2,6 +2,7 @@
 // is debounced + sent through the (serialized) transport. Engineering-unit params
 // are converted to wire values via the Calibration seam.
 import { WebHidTransport } from "../transport/webhid.ts";
+import { NativeTransport } from "../transport/native.ts";
 import { Dsp } from "../dsp.ts";
 import { defaultCalibration, type Calibration } from "../eq/calibration.ts";
 import { getLevelsFrame, gainRawToDb } from "../protocol/control.ts";
@@ -36,19 +37,25 @@ export class DeviceStore {
   /** Collapse the open node → all-collapsed patch-board overview. */
   collapse(): void { this.selected = -1; }
 
-  /** Connect via the device picker (needs a user gesture). */
+  /** Connect via the device picker (needs a user gesture). On Android the native
+   *  bridge replaces the picker — open() raises the system USB-permission dialog. */
   async connect(): Promise<void> {
-    try { await this._bind(await WebHidTransport.request()); }
+    try { await this._bind(NativeTransport.supported() ? new NativeTransport() : await WebHidTransport.request()); }
     catch (e) { this.error = (e as Error).message; }
   }
 
   /** Reconnect to an already-granted device without prompting (call on page load). */
   async autoConnect(): Promise<void> {
-    try { await this._bind(await WebHidTransport.existing()); }
-    catch (e) { this.error = (e as Error).message; }
+    try {
+      if (NativeTransport.supported()) {
+        if (NativeTransport.connected()) await this._bind(new NativeTransport()); // attach intent pre-grants permission
+        return;
+      }
+      await this._bind(await WebHidTransport.existing());
+    } catch (e) { this.error = (e as Error).message; }
   }
 
-  private async _bind(t: WebHidTransport | null): Promise<void> {
+  private async _bind(t: WebHidTransport | NativeTransport | null): Promise<void> {
     if (!t) return;
     await t.open();
     this.dsp = new Dsp(t);

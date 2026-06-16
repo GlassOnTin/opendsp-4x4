@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- t.racks DSP 4x4 Mini Pro — 0x0168 / 0x0821 in decimal -->
+    <usb-device vendor-id="360" product-id="2081" />
+</resources>
