@@ -1,23 +1,25 @@
 # F-Droid build recipe for openDSP-4x4.
 #
-# This file is NOT used by this repo — it is submitted to F-Droid's metadata
-# repo as a merge request:
+# Submitted to F-Droid's metadata repo as a merge request:
 #   1. Fork  https://gitlab.com/fdroid/fdroiddata
 #   2. Copy this file to  metadata/net.opendsp.x4x4.yml
-#   3. Run  fdroid rewritemeta net.opendsp.x4x4   (drops this comment header; the
-#      rest is already in canonical order, so it's otherwise a no-op)
-#   4. Test:  fdroid build net.opendsp.x4x4:4     (needs the fdroidserver buildserver)
+#   3. Run  fdroid rewritemeta net.opendsp.x4x4   (drops this comment header)
+#   4. Test:  fdroid build net.opendsp.x4x4:4
 #   5. Open the MR.
 #
-# ⚠ Build-from-source caveat (verified with `fdroid scanner`): the web bundle is
-# built with Vite, which pulls *prebuilt* native binaries from npm — esbuild
-# (node_modules/esbuild/bin/esbuild and @esbuild/linux-x64) and Rollup
-# (@rollup/rollup-linux-x64-gnu/*.node). The scanner only passes because the
-# `scanignore: web/node_modules` below makes it log "Ignoring binary at …esbuild".
-# F-Droid's policy disallows prebuilt binaries in the build, so reviewers are
-# likely to object to that scanignore. If it can't be resolved, IzzyOnDroid (which
-# ships the signed GitHub-release APK and reuses the same fastlane metadata) is the
-# lower-friction route to the same F-Droid clients.
+# Prebuilt-binary handling (F-Droid bans prebuilt binaries in the build):
+#
+#   esbuild — SOLVED, build-from-source. esbuild is Go; the recipe clones it at
+#   the pinned tag, `go build`s it, points npm at it via ESBUILD_BINARY_PATH
+#   (esbuild honours that), deletes the prebuilt binaries npm fetched, and removes
+#   the esbuild checkout before the scan. Verified locally: a `vite build` driven
+#   by the from-source esbuild produces a BYTE-IDENTICAL bundle to the stock one.
+#
+#   Rollup native — NOT yet solved. Vite 6 uses Rollup 4, whose parser is a
+#   prebuilt Rust/napi binary (@rollup/rollup-linux-x64-gnu/*.node). Until it is
+#   built from source (Rust toolchain) or replaced with a from-source wasm build,
+#   it is the one remaining scanignore below — so this MR is not yet policy-clean.
+#   (IzzyOnDroid ships the signed GitHub-release APK and needs none of this.)
 
 Categories:
   - Connectivity
@@ -41,14 +43,24 @@ Builds:
     subdir: android/app
     sudo:
       - apt-get update
-      - apt-get install -y npm
+      - apt-get install -y golang-go npm
     gradle:
       - yes
     prebuild:
-      - pushd ../../web && npm ci && VITE_TARGET=android npm run build && popd
+      # build esbuild from source (Go), so npm's prebuilt binary isn't used
+      - git clone --depth 1 --branch v0.25.12 https://github.com/evanw/esbuild ../../esbuild-src
+      - ( cd ../../esbuild-src && go build ./cmd/esbuild )
+      # install web deps without the esbuild postinstall download, then drop the
+      # prebuilt esbuild binaries — ESBUILD_BINARY_PATH points at the from-source one
+      - ( cd ../../web && npm ci --ignore-scripts )
+      - rm -f ../../web/node_modules/esbuild/bin/esbuild ../../web/node_modules/@esbuild/*/bin/esbuild
+      - ( cd ../../web && ESBUILD_BINARY_PATH="$(cd ../esbuild-src && pwd)/esbuild" VITE_TARGET=android npm run build )
+      # sync the bundle into app assets and remove the build-tool source/artifact
       - mkdir -p src/main/assets/www && cp -a ../../web/dist/. src/main/assets/www/
+      - rm -rf ../../esbuild-src
     scanignore:
-      - web/node_modules
+      # only Rollup's native parser remains prebuilt; see the note at the top
+      - web/node_modules/@rollup
 
 AutoUpdateMode: Version v%v
 UpdateCheckMode: Tags ^v[0-9.]+$
