@@ -1,0 +1,20 @@
+openDSP-4x4 is an open-source control app for the t.racks DSP 4x4 Mini Pro, a 4-in / 4-out XLR digital signal processor that otherwise ships with Windows-only editor software. It lets you set the DSP up from an Android phone or tablet — at the desk or on stage — connected over USB-OTG.
+
+The control protocol was reverse-engineered clean-room, purely by observing the device's USB-HID traffic and probing it (write a known value, read it back, match the bytes). The same protocol drives a zero-install desktop web app (WebHID) and this Android build. On Android the UI runs in a WebView and reaches the device through a small native USB-host layer, because no Android browser can talk to a HID device.
+
+Features:
+
+* Input/output routing matrix.
+* Gain, mute and polarity per channel.
+* 7-band parametric EQ with high- and low-pass crossovers.
+* Compressor, gate and output delay.
+* Preset recall and store (7 device slots) as quick launch pads.
+* Live input/output meters and full device-state read-back on connect.
+
+Privacy:
+
+* No analytics, no telemetry, no network connections — the app talks only to the DSP over USB.
+
+Plug the DSP into the phone with a data-capable USB-OTG cable, tap Connect, grant the USB permission, and the app reads the device's current state and is ready to edit.
+
+Independent, clean-room interoperability project. "the t.racks" is a trademark of Thomann; this app is not affiliated with or endorsed by Thomann.
