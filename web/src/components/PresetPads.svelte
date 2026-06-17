@@ -3,7 +3,7 @@
   // (the fast scene-change action). Store is a deliberate two-step (arm, then tap)
   // so a slot can't be overwritten by accident mid-show.
   import { device } from "../state/device.svelte.ts";
-  const COUNT = 30;
+  const COUNT = 7; // the device exposes 7 preset slots (matches the official app)
   let open = $state(true);
   let storeMode = $state(false);
 
@@ -49,12 +49,12 @@
   .spacer { flex: 1; }
   .chev { color: var(--text-dim); }
   .body { padding: 0 1rem .7rem; display: flex; flex-direction: column; gap: .6rem; }
-  .pads { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .pads { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; }
   .pad { min-width: 46px; height: 46px; flex: 0 0 auto; border-radius: 8px; font-weight: 600; color: #fff;
     border: 1px solid hsl(var(--h) 50% 48%); background: hsl(var(--h) 45% 24%); }
   .pad.active { background: hsl(var(--h) 70% 46%); box-shadow: 0 0 0 2px hsl(var(--h) 85% 64%), 0 0 12px hsl(var(--h) 80% 50% / .55); }
   .pad.arm { border-color: var(--bad); }
   .pad:disabled { opacity: .4; }
-  .store { align-self: flex-start; font-size: .82rem; }
+  .store { align-self: center; font-size: .82rem; }
   .store.on { background: var(--bad); color: #fff; border-color: var(--bad); }
 </style>
