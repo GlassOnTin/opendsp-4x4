@@ -1,5 +1,13 @@
 # openDSP-4x4 — portable control for the t.racks DSP 4x4 Mini Pro
 
+<p align="center">
+  <a href="https://github.com/GlassOnTin/opendsp-4x4/releases/latest"><img src="https://img.shields.io/github/v/release/GlassOnTin/opendsp-4x4?style=flat-square&label=release&color=blue" alt="Release" /></a>
+  <a href="https://glassontin.github.io/opendsp-4x4/"><img src="https://img.shields.io/badge/web%20app-live-38bdf8?style=flat-square&logo=googlechrome&logoColor=white" alt="Web app" /></a>
+  <img src="https://img.shields.io/badge/Android-7.0%2B-3ddc84?style=flat-square&logo=android&logoColor=white" alt="Android 7.0+" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-orange?style=flat-square" alt="License: AGPL-3.0" /></a>
+  <a href="https://ko-fi.com/glassontin"><img src="https://img.shields.io/badge/Ko--fi-support-ff5e5b?style=flat-square&logo=ko-fi&logoColor=white" alt="Support on Ko-fi" /></a>
+</p>
+
 Open-source, cross-platform control software for the **the t.racks DSP 4x4 Mini Pro**
 (a 4-in/4-out XLR DSP that ships with Windows-only editor software).
 
@@ -46,6 +54,10 @@ The protocol is the single source of truth and is implemented per-platform:
 - `android/` — WebView shell + Kotlin USB-host layer for the Android USB-OTG build.
 - `ANDROID.md` — how the Android app is built (WebView + USB-bridge walkthrough).
 - `docs/CAPTURING.md` — record a USB session to help add support for more devices.
+
+## Support
+openDSP-4x4 is free and AGPL-licensed. If it saved your gig, you can
+**[buy me a coffee on Ko-fi](https://ko-fi.com/glassontin)** ☕ — entirely optional, always appreciated.
 
 ## Legal
 Independent, **clean-room** interoperability implementation: the control protocol was
