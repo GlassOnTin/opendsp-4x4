@@ -47,7 +47,12 @@ Builds:
     subdir: android/app
     sudo:
       - apt-get update
-      - apt-get install -y golang-go npm rustup build-essential
+      - apt-get install -y golang-go rustup build-essential
+      # the buildserver's stock npm is too old for @napi-rs/cli's dep tree
+      # ("Invalid comparator: npm:@built-in/..."); install current Node + npm
+      - curl -Lo node.tar.gz https://nodejs.org/dist/v24.11.1/node-v24.11.1-linux-x64.tar.gz
+      - echo "58a5ff5cc8f2200e458bea22e329d5c1994aa1b111d499ca46ec2411d58239ca  node.tar.gz" | sha256sum -c -
+      - tar xzf node.tar.gz --strip-components=1 -C /usr/local/
     gradle:
       - yes
     prebuild:
@@ -67,7 +72,7 @@ Builds:
       # remove build intermediates (none of this is in the APK)
       - rm -rf ../../esbuild-src ../../rollup-src ../../web/node_modules
 
-AutoUpdateMode: Version v%v
+AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
 CurrentVersion: 0.2.1
 CurrentVersionCode: 5
