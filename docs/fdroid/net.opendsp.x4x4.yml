@@ -1,0 +1,53 @@
+# F-Droid build recipe for openDSP-4x4.
+#
+# This file is NOT used by this repo — it is submitted to F-Droid's metadata
+# repo as a merge request:
+#   1. Fork  https://gitlab.com/fdroid/fdroiddata
+#   2. Copy this file to  metadata/net.opendsp.x4x4.yml
+#   3. Test locally:  fdroid build net.opendsp.x4x4:4   (needs the fdroidserver VM)
+#   4. Open the MR.
+#
+# ⚠ Build-from-source caveat: the web bundle is built with Vite, which pulls
+# esbuild — a *prebuilt* native binary from npm. F-Droid's policy disallows
+# prebuilt binaries in the build, so `scanignore: web/node_modules` below will
+# draw reviewer scrutiny and may need to be justified or replaced (e.g. building
+# esbuild from source). If that proves unworkable, IzzyOnDroid (which ships the
+# signed GitHub-release APK and reuses the same fastlane metadata) is the
+# lower-friction route to the same F-Droid clients.
+
+Categories:
+  - Multimedia
+  - Connectivity
+License: AGPL-3.0-or-later
+AuthorName: Ian Williams
+SourceCode: https://github.com/GlassOnTin/opendsp-4x4
+IssueTracker: https://github.com/GlassOnTin/opendsp-4x4/issues
+Donate: https://ko-fi.com/glassontin
+Liberapay: GlassOnTin
+
+AutoName: openDSP-4x4
+
+RepoType: git
+Repo: https://github.com/GlassOnTin/opendsp-4x4.git
+
+Builds:
+  - versionName: 0.2.0
+    versionCode: 4
+    commit: v0.2.0
+    sudo:
+      - apt-get update
+      - apt-get install -y npm
+    subdir: android/app
+    gradle:
+      - yes
+    prebuild:
+      # build the web bundle in Android mode, then sync it into app assets
+      - pushd ../../web && npm ci && VITE_TARGET=android npm run build && popd
+      - mkdir -p src/main/assets/www && cp -a ../../web/dist/. src/main/assets/www/
+    scanignore:
+      - web/node_modules   # build-time only; not shipped in the APK
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags ^v[0-9.]+$
+CurrentVersion: 0.2.0
+CurrentVersionCode: 4
