@@ -32,13 +32,18 @@ Liberapay: GlassOnTin
 
 AutoName: openDSP-4x4
 
+# Reproducible Builds: the published GitHub-release APK is signed with this key;
+# F-Droid verifies its build reproduces it (content is identical apart from the
+# signature) and ships this signature, so F-Droid and GitHub/IzzyOnDroid APKs match.
+AllowedAPKSigningKeys: 12b4463c8a6a356c64a743ed912a047b05a210f113829de15c71b748e63fe2a1
+
 RepoType: git
 Repo: https://github.com/GlassOnTin/opendsp-4x4.git
 
 Builds:
-  - versionName: 0.2.0
-    versionCode: 4
-    commit: v0.2.0
+  - versionName: 0.2.1
+    versionCode: 5
+    commit: v0.2.1
     subdir: android/app
     sudo:
       - apt-get update
@@ -64,5 +69,5 @@ Builds:
 
 AutoUpdateMode: Version v%v
 UpdateCheckMode: Tags ^v[0-9.]+$
-CurrentVersion: 0.2.0
-CurrentVersionCode: 4
+CurrentVersion: 0.2.1
+CurrentVersionCode: 5

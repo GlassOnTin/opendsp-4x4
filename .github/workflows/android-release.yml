@@ -75,7 +75,11 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon assembleRelease
+        run: |
+          # pin timestamps to the commit so the published APK matches F-Droid's
+          # reproducible build (enables verified Reproducible Builds)
+          export SOURCE_DATE_EPOCH="$(git log -1 --pretty=%ct)"
+          ./gradlew --no-daemon assembleRelease
 
       - name: Stage APK
         run: |

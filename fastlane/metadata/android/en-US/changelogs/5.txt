@@ -1,0 +1,1 @@
+Adds an app launcher icon (the 4×4 routing-matrix motif) and a Ko-fi link in the footer. Internally, the version now lives in source so builds are deterministic and reproducible.
