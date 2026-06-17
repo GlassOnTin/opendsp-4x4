@@ -42,7 +42,8 @@
   <button class="systoggle" class:on={showSystem} onclick={() => (showSystem = !showSystem)}>System {showSystem ? "▾" : "▴"}</button>
   <footer class="agpl muted">
     openDSP-4x4 · <a href="https://www.gnu.org/licenses/agpl-3.0.html">AGPL-3.0</a> ·
-    <a href="https://github.com/GlassOnTin/opendsp-4x4">source</a> · not affiliated with Thomann
+    <a href="https://github.com/GlassOnTin/opendsp-4x4">source</a> ·
+    <a href="https://ko-fi.com/glassontin">Ko-fi ☕</a> · not affiliated with Thomann
   </footer>
 </div>
 
