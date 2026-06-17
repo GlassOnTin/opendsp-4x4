@@ -8,12 +8,14 @@
 #   4. Open the MR.
 #
 # ⚠ Build-from-source caveat: the web bundle is built with Vite, which pulls
-# esbuild — a *prebuilt* native binary from npm. F-Droid's policy disallows
-# prebuilt binaries in the build, so `scanignore: web/node_modules` below will
-# draw reviewer scrutiny and may need to be justified or replaced (e.g. building
-# esbuild from source). If that proves unworkable, IzzyOnDroid (which ships the
-# signed GitHub-release APK and reuses the same fastlane metadata) is the
-# lower-friction route to the same F-Droid clients.
+# *prebuilt* native binaries from npm — esbuild (node_modules/esbuild/bin/esbuild
+# and @esbuild/linux-x64) and Rollup (@rollup/rollup-linux-x64-gnu/*.node).
+# F-Droid's policy disallows prebuilt binaries in the build, so the
+# `scanignore: web/node_modules` below will draw reviewer scrutiny and may need to
+# be justified or replaced (building those toolchain binaries from source is hard).
+# If that proves unworkable, IzzyOnDroid (which ships the signed GitHub-release APK
+# and reuses the same fastlane metadata) is the lower-friction route to the same
+# F-Droid clients.
 
 Categories:
   - Multimedia
