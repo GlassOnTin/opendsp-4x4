@@ -7,19 +7,18 @@
 #   4. Test:  fdroid build net.opendsp.x4x4:4
 #   5. Open the MR.
 #
-# Prebuilt-binary handling (F-Droid bans prebuilt binaries in the build):
+# No prebuilt binaries: Vite pulls two prebuilt native binaries from npm — esbuild
+# (Go) and Rollup 4's parser (Rust/napi). This recipe builds BOTH from source at
+# the pinned upstream tags and makes Vite use them, then removes node_modules and
+# the build-tool checkouts (they're build intermediates, not part of the APK).
+# Verified locally: a `vite build` driven by the from-source esbuild AND the
+# from-source Rollup native produces a BYTE-IDENTICAL bundle to the stock one — so
+# there is no `scanignore`.
 #
-#   esbuild — SOLVED, build-from-source. esbuild is Go; the recipe clones it at
-#   the pinned tag, `go build`s it, points npm at it via ESBUILD_BINARY_PATH
-#   (esbuild honours that), deletes the prebuilt binaries npm fetched, and removes
-#   the esbuild checkout before the scan. Verified locally: a `vite build` driven
-#   by the from-source esbuild produces a BYTE-IDENTICAL bundle to the stock one.
-#
-#   Rollup native — NOT yet solved. Vite 6 uses Rollup 4, whose parser is a
-#   prebuilt Rust/napi binary (@rollup/rollup-linux-x64-gnu/*.node). Until it is
-#   built from source (Rust toolchain) or replaced with a from-source wasm build,
-#   it is the one remaining scanignore below — so this MR is not yet policy-clean.
-#   (IzzyOnDroid ships the signed GitHub-release APK and needs none of this.)
+# Caveats for the buildserver run: Rollup pins Rust nightly-2025-07-25 (via its
+# rust-toolchain.toml — rustup auto-installs it); the SWC compile is heavy (~1 min,
+# a few GB RAM). If apt's `rustup` isn't available on the builder, install rustup
+# upstream instead.
 
 Categories:
   - Connectivity
@@ -43,24 +42,25 @@ Builds:
     subdir: android/app
     sudo:
       - apt-get update
-      - apt-get install -y golang-go npm
+      - apt-get install -y golang-go npm rustup build-essential
     gradle:
       - yes
     prebuild:
-      # build esbuild from source (Go), so npm's prebuilt binary isn't used
+      # esbuild from Go source
       - git clone --depth 1 --branch v0.25.12 https://github.com/evanw/esbuild ../../esbuild-src
       - ( cd ../../esbuild-src && go build ./cmd/esbuild )
-      # install web deps without the esbuild postinstall download, then drop the
-      # prebuilt esbuild binaries — ESBUILD_BINARY_PATH points at the from-source one
+      # Rollup 4 native parser from Rust source (rustup auto-installs the pinned nightly)
+      - git clone --depth 1 --branch v4.62.0 https://github.com/rollup/rollup ../../rollup-src
+      - ( cd ../../rollup-src && npm install --no-save --no-audit --no-fund @napi-rs/cli@3.4.1 && ./node_modules/.bin/napi build --cwd rust/bindings_napi --platform --release --no-js --dts native.d.ts --output-dir ../.. --package-json-path ../../package.json )
+      # install web deps (no esbuild postinstall download), swap in the from-source binaries
       - ( cd ../../web && npm ci --ignore-scripts )
       - rm -f ../../web/node_modules/esbuild/bin/esbuild ../../web/node_modules/@esbuild/*/bin/esbuild
+      - cp -f ../../rollup-src/rollup.linux-x64-gnu.node ../../web/node_modules/@rollup/rollup-linux-x64-gnu/rollup.linux-x64-gnu.node
+      # build the bundle with the from-source esbuild, sync into app assets
       - ( cd ../../web && ESBUILD_BINARY_PATH="$(cd ../esbuild-src && pwd)/esbuild" VITE_TARGET=android npm run build )
-      # sync the bundle into app assets and remove the build-tool source/artifact
       - mkdir -p src/main/assets/www && cp -a ../../web/dist/. src/main/assets/www/
-      - rm -rf ../../esbuild-src
-    scanignore:
-      # only Rollup's native parser remains prebuilt; see the note at the top
-      - web/node_modules/@rollup
+      # remove build intermediates (none of this is in the APK)
+      - rm -rf ../../esbuild-src ../../rollup-src ../../web/node_modules
 
 AutoUpdateMode: Version v%v
 UpdateCheckMode: Tags ^v[0-9.]+$
