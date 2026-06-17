@@ -37,13 +37,14 @@ The protocol is the single source of truth and is implemented per-platform:
   supplies USB-host byte I/O through a small Kotlin layer + a JS bridge — the only path that
   reaches the device on Android (WebHID is desktop-only; WebUSB blocks the HID class). Built,
   released (`v0.2.0`) and **verified on a Pixel 8 Pro over USB-OTG**: permission, version
-  handshake, state readback, preset recall, routing and meters. See [`ANDROID.md`](ANDROID.md).
+  handshake, state readback, preset recall, routing and meters.
+  See the [build walkthrough](ANDROID.md) for how it's put together.
 
 ## Repo layout
 - `PROTOCOL.md` — the wire protocol (frame format, command codes, data model).
 - `web/` — TypeScript protocol codec + WebHID app (also bundled into the Android shell).
 - `android/` — WebView shell + Kotlin USB-host layer for the Android USB-OTG build.
-- `ANDROID.md` — Android port design notes and on-device validation.
+- `ANDROID.md` — how the Android app is built (WebView + USB-bridge walkthrough).
 - `docs/CAPTURING.md` — record a USB session to help add support for more devices.
 
 ## Legal

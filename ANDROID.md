@@ -1,19 +1,26 @@
-# Android port — design notes
+# How the Android app works — a WebView + USB-bridge walkthrough
 
-Goal: control the DSP from a phone/tablet at a gig over **USB-OTG**, reusing the existing web
-app rather than rewriting it.
+openDSP-4x4 runs on Android by **wrapping the existing web app in a thin WebView** and handing
+it a small native USB pipe. This page explains why, and walks through the pieces. It doubles as
+a reusable recipe for getting any WebHID/WebUSB app onto a phone when the browser can't reach
+the hardware.
 
-## Why a native shell is required
-The web app reaches the device with **WebHID**, which is desktop-only. On Android, no browser API
-can reach this device: WebHID isn't implemented there, and WebUSB **blocks the HID interface
-class**. So the app must provide USB-host I/O natively.
+## Why a native shell at all?
 
-Rather than rewrite the UI, the Android app is a thin **WebView** that loads the existing web UI
-(bundled offline) and supplies byte I/O through a small Kotlin USB layer + a JavaScript bridge.
-The UI, protocol codec, and EQ math are reused unchanged.
+The web app talks to the DSP with **WebHID**, which only exists in desktop Chrome/Edge. On
+Android there is *no* browser path to this device:
 
-## The transport seam
-Everything above `web/src/transport/transport.ts` is platform-agnostic:
+- **WebHID** isn't implemented in any Android browser.
+- **WebUSB** is implemented, but it **blocks the HID interface class** for security.
+
+So the USB I/O has to be native. Everything else — the UI, the protocol codec, the EQ maths —
+is reused unchanged. The whole Android-specific surface is three small Kotlin files plus ~100
+lines of TypeScript.
+
+## The one seam that makes this cheap
+
+The codebase keeps a single boundary between the platform-agnostic protocol and the actual I/O,
+in [`web/src/transport/transport.ts`](web/src/transport/transport.ts):
 
 ```ts
 interface DspTransport {
@@ -25,101 +32,121 @@ interface DspTransport {
 }
 ```
 
-`webhid.ts` already keeps the tricky logic in pure JS: one-at-a-time request serialization and a
-~400 ms-per-attempt retry (the device drops the reply to the first transaction after open). The
-only WebHID-specific lines are `device.sendReport(0, frame)` and the `inputreport` event. A new
-`NativeTransport` reuses that logic and swaps those two for the bridge.
+`webhid.ts` implements it for the desktop. For Android we add **one more implementation** that
+sends the same bytes through a bridge. Nothing above the seam changes.
 
-## Bridge contract (raw bytes only; bytes as base64 strings)
-JS → native (`@JavascriptInterface`, synchronous):
+```
+     Svelte UI ─ device store ─ Dsp client ─ DspTransport
+                                                 │
+                   ┌─────────────────────────────┴──────────────────────────┐
+              WebHidTransport (desktop)                    NativeTransport (Android)
+              device.sendReport / inputreport         window.AndroidUsb  ⇄  Kotlin USB
+```
+
+## Step 1 — `NativeTransport` (TypeScript)
+
+[`web/src/transport/native.ts`](web/src/transport/native.ts) is the webhid request/retry chain
+with two lines swapped:
+
+- **write:** `device.sendReport(0, frame)` → `window.AndroidUsb.write(base64)`
+- **read:** the `inputreport` event → a global callback `window.__dsp_onReport(base64)`
+
+The tricky bit — one in-flight request at a time, plus a ~400 ms-per-attempt retry because the
+device drops the reply to the *first* transaction after open — stays in JS so it's
+unit-testable. [`web/test/native.test.ts`](web/test/native.test.ts) drives it against a fake
+bridge (reply pairing, retry, timeout).
+
+Two more small edits wire it up:
+
+- [`device.svelte.ts`](web/src/state/device.svelte.ts) picks the transport — native bridge
+  present → `NativeTransport`, else `WebHidTransport`.
+- [`vite.config.ts`](web/vite.config.ts) — `VITE_TARGET=android` sets `base: "./"` so the
+  bundle's asset paths resolve under the WebView's asset-loader host.
+
+## Step 2 — the bridge contract
+
+Raw bytes only, carried as base64 strings.
+
+**JS → native** (`@JavascriptInterface`, synchronous):
 `AndroidUsb.open()`, `AndroidUsb.write(b64)`, `AndroidUsb.close()`, `AndroidUsb.isConnected()`.
 
-Native → JS (`evaluateJavascript` on the UI thread):
-`window.__dsp_onReport(b64)` per inbound report; `window.__dsp_onState(connected)` on connect/drop.
+**native → JS** (`evaluateJavascript` on the UI thread):
+`window.__dsp_onReport(b64)` per inbound report; `window.__dsp_onState(connected)` on
+connect/drop.
 
-## Work breakdown
+That's the whole interface. The Kotlin side is a *dumb byte pipe* — it knows nothing about the
+protocol.
 
-### Web (small)
-- **NEW** `web/src/transport/native.ts` — `NativeTransport implements DspTransport`; reuses
-  webhid's request/retry chain; `write` → `window.AndroidUsb.write`; listens on
-  `window.__dsp_onReport`/`__dsp_onState`. Active when `"AndroidUsb" in window`.
-- **EDIT** `web/src/state/device.svelte.ts` — pick the transport: native bridge present →
-  `NativeTransport` (no device picker; `open()` raises the system permission dialog), else
-  `WebHidTransport`. The rest of the connect flow (version handshake, hydrate, meters) is unchanged.
-- **EDIT** `web/vite.config.ts` — an Android build mode (`VITE_TARGET=android`) sets `base: "./"`
-  so assets resolve under the asset-loader path. The existing Pages (`/opendsp-4x4/`) and dev (`/`)
-  bases are unchanged.
-- **NEW** `web/test/native.test.ts` — drive `NativeTransport` against a fake bridge; assert reply
-  pairing and retry/timeout. Existing protocol tests are unaffected.
+## Step 3 — the Kotlin shell (`android/`)
 
-### Android (`android/`)
+Three small files:
+
+- **[`MainActivity.kt`](android/app/src/main/java/net/opendsp/x4x4/MainActivity.kt)** — a
+  full-screen WebView that serves the bundled UI from
+  `https://appassets.androidplatform.net/assets/www/` via `WebViewAssetLoader` (offline, and
+  avoids `file://` quirks). Wires the bridge in with `addJavascriptInterface(bridge, "AndroidUsb")`.
+- **[`UsbHid.kt`](android/app/src/main/java/net/opendsp/x4x4/UsbHid.kt)** — the USB host:
+  enumerate by VID/PID (`0x0168` / `0x0821`) → runtime permission → `openDevice` →
+  `claimInterface(force = true)` (this detaches the kernel HID driver) → interrupt endpoints
+  OUT `0x02` / IN `0x81`. A daemon read thread loops on `bulkTransfer` (Android services
+  interrupt endpoints through it too) and forwards each report.
+- **[`Bridge.kt`](android/app/src/main/java/net/opendsp/x4x4/Bridge.kt)** — the
+  `@JavascriptInterface` methods, base64 ⇄ bytes, and `evaluateJavascript` to push reports/state
+  back to the page.
+
+The [manifest](android/app/src/main/AndroidManifest.xml) declares the `usb.host` feature and a
+`USB_DEVICE_ATTACHED` intent-filter pointing at
+[`device_filter.xml`](android/app/src/main/res/xml/device_filter.xml) (`vendor-id="360"
+product-id="2081"` — the same IDs in decimal). Plugging the DSP in then offers to launch the app
+*and pre-grants USB permission*.
+
+## Step 4 — the edge-to-edge gotcha
+
+Targeting Android 15 (SDK 35) forces **edge-to-edge**: the WebView draws under the status and
+nav bars, so the page's top row lands beneath the clock. Padding the WebView *view* doesn't help
+— Chromium ignores view padding for its content viewport (its `innerHeight` stays the full
+screen height). The fix is to read the system-bar insets and feed them to CSS:
+
+```kotlin
+ViewCompat.setOnApplyWindowInsetsListener(webView) { _, insets ->
+    val bars = insets.getInsets(
+        WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+    // px → CSS px (÷ density), then push into the page on the UI thread:
+    safeTopPx = bars.top / density; safeBottomPx = bars.bottom / density
+    applyInsets() // evaluateJavascript: documentElement.style.setProperty('--safe-top', …)
+    WindowInsetsCompat.CONSUMED
+}
 ```
-android/
-  settings.gradle.kts, build.gradle.kts, gradle/         Gradle (Kotlin, androidx.webkit)
-  app/build.gradle.kts                                   minSdk 24, current targetSdk
-  app/src/main/AndroidManifest.xml                       usb.host feature + USB_DEVICE_ATTACHED filter
-  app/src/main/res/xml/device_filter.xml                 vendor-id="360" product-id="2081" (0x0168/0x0821)
-  app/src/main/java/.../MainActivity.kt                  WebView + WebViewAssetLoader; bridge wiring
-  app/src/main/java/.../UsbHid.kt                         open/claim(force)/read-thread/write
-  app/src/main/java/.../Bridge.kt                         @JavascriptInterface; base64 <-> bytes
-  app/src/main/assets/www/                                <- built web/dist
-```
-- `WebViewAssetLoader` serves the bundle from `https://appassets.androidplatform.net/assets/www/`
-  (offline; avoids `file://` quirks).
-- `UsbHid`: `UsbManager` enumerate → runtime permission → `openDevice` → `claimInterface(force=true)`
-  (detaches any kernel HID driver) → interrupt endpoints OUT `0x02` / IN `0x81`; a read thread uses
-  `bulkTransfer` (Android also services interrupt endpoints through it) and forwards reports.
-- The attach intent-filter offers to launch the app on plug-in and pre-grants permission.
 
-### Build glue
-One step builds the web bundle in Android mode and copies `web/dist/*` →
-`android/app/src/main/assets/www/`, then `./gradlew assembleDebug` produces the APK.
+The header reserves `var(--safe-top)` and the bottom bar reserves `var(--safe-bottom)`.
 
-## Validation
-1. **De-risk first:** confirm on real hardware that Android can `claimInterface` this HID device and
-   exchange a frame — send the level-poll `10 02 00 01 01 40 10 03 41` to EP `0x02` and read EP
-   `0x81`; expect a `0x40` level reply. If the interface won't claim, revisit the approach before
-   building the APK.
-2. Web: `tsc --noEmit` clean; Android-mode `vite build` emits relative-path assets; `native.test.ts`
-   passes; existing tests stay green.
-3. On device: plug the DSP via USB-OTG → permission dialog → version string read (handshake
-   `0x10`→`0x13`) → channel-state pages hydrate → UI populates → meters poll. Toggle a mute and move
-   a PEQ band; confirm the device responds.
+## Step 5 — build & release
 
-## Design choices (kept deliberately small)
-- No Capacitor and no Compose rewrite — a bare WebView with one bridge is the least code for a
-  single-bridge app, and keeps one source of truth for the calibrated protocol.
-- No in-app device chooser — the attach filter + system permission dialog handle selection.
-- All timing/retry logic stays in TypeScript (unit-testable); the Kotlin side is a dumb byte pipe.
+One script, [`android/build-apk.sh`](android/build-apk.sh), runs the whole chain: build the web
+bundle in Android mode → copy `web/dist/*` into `app/src/main/assets/www/` →
+`./gradlew assembleDebug`.
+
+Releases are automated. Tag `vX.Y.Z` and
+[`.github/workflows/android-release.yml`](.github/workflows/android-release.yml) verifies the web
+bundle (typecheck + tests), assembles a **signed** APK (keystore from repo secrets, with a
+debug-key fallback so it still builds without them), and publishes a GitHub Release. The signing
+secret names are in the workflow header.
+
+## Gotchas worth knowing
+
+- **Use a data-capable OTG cable/adapter.** A charge-only one makes Android report the Type-C
+  compliance warning `missing data lines` and *nothing enumerates* — no device in the list, no
+  permission dialog. (Isolate it by trying a known-good USB stick on the same adapter.)
+- **`claimInterface(force = true)` is required** — without `force` the kernel HID driver keeps the
+  interface and the claim fails.
+- **Changing the signing key needs an uninstall** — Android refuses to update a package when the
+  APK signature changes (e.g. a debug build → a release build).
+- **Keep timing/retry in TypeScript.** The Kotlin side stays a byte pipe, so the calibrated
+  protocol has one source of truth and the fiddly parts stay unit-testable.
 
 ## Status
 
-**Web side: built and verified.** `native.ts`, the `device.svelte.ts` transport pick,
-the `VITE_TARGET=android` base, and `native.test.ts` are in place. `tsc --noEmit` is
-clean, all 46 tests pass (4 new), and `VITE_TARGET=android vite build` emits relative
-`./assets/…` paths.
-
-**Android side: builds, installs, runs.** The Gradle project, manifest, USB-host layer,
-bridge, and WebView activity are under `android/`; `android/build-apk.sh` runs the
-web-build → asset-sync → `assembleDebug` chain. Built with Gradle 8.11.1 under JDK 17
-(Java 25 is too new for Gradle 8.11), SDK at `~/Android/Sdk`, compileSdk 35. On a Pixel
-the APK installs, launches without crashing, the WebView renders the offline bundle, and
-the web app detects `window.AndroidUsb` (the "WebHID unavailable" banner is suppressed —
-`App.svelte` now treats the native bridge as a supported transport).
-
-**Hardware validation: works on a Pixel 8 Pro over USB-OTG.** With the DSP on a powered
-USB-C hub, Android matched the device filter (`UsbHostManager: vidpid 0168:0821 … HID`),
-launched the activity via the attach intent, and the app enumerated → `claimInterface(force=true)`
-→ exchanged frames. The version handshake returned `4x4MINIPRO V010` and the 9 channel-state
-pages hydrated (Out1 gain, 7-band PEQ, crossover all populated). That clears §Validation 1
-(de-risk) and §3 through hydrate.
-
-Still to confirm: meters need signal to move (poll loop is wired but unverified live), and the
-write path — toggle a mute / move a PEQ band and confirm the device responds (§3 final step).
-
-Cabling note: a charge-only USB-C OTG adapter fails with the Type-C compliance warning
-`missing data lines` and nothing enumerates; a data-capable hub/adapter is required.
-
-Known gaps: `UsbHid.open()` with no device found leaves the JS `open()` waiting for the 30 s
-timeout (no fast "not found" signal over the connected-boolean bridge); hot-unplug → UI
-teardown isn't wired on either transport (webhid has the same gap).
+Verified end-to-end on a Pixel 8 Pro over USB-OTG: attach → permission → version handshake
+(`4x4MINIPRO V010`) → full state readback/hydrate → preset recall, routing and live meters.
+Released as `v0.2.0`. Open gap: hot-unplug doesn't yet tear down the UI (the desktop WebHID
+transport has the same gap).
