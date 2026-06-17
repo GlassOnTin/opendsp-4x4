@@ -1,0 +1,1 @@
+F-Droid build compliance: drop the AGP dependency-metadata signing block so the app builds reproducibly from source on F-Droid. No user-facing changes from 0.2.1.

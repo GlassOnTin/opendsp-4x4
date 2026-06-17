@@ -41,9 +41,9 @@ RepoType: git
 Repo: https://github.com/GlassOnTin/opendsp-4x4.git
 
 Builds:
-  - versionName: 0.2.1
-    versionCode: 5
-    commit: v0.2.1
+  - versionName: 0.2.2
+    versionCode: 6
+    commit: v0.2.2
     subdir: android/app
     sudo:
       - apt-get update
@@ -74,5 +74,5 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
-CurrentVersion: 0.2.1
-CurrentVersionCode: 5
+CurrentVersion: 0.2.2
+CurrentVersionCode: 6
