@@ -11,9 +11,10 @@ android {
         applicationId = "net.opendsp.x4x4"
         minSdk = 24
         targetSdk = 35
-        // CI overrides these from the release tag / run number (-PversionName/-PversionCode).
-        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = (project.findProperty("versionName") as String?) ?: "0.1.0"
+        // Version lives in source so any build (CI, F-Droid, local) is deterministic
+        // and reproducible — bump these per release, in the same commit you tag.
+        versionCode = 5
+        versionName = "0.2.1"
     }
 
     signingConfigs {
