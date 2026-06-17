@@ -26,5 +26,6 @@ android {
 }
 
 dependencies {
+    implementation("androidx.core:core-ktx:1.13.1") // WindowInsetsCompat for edge-to-edge insets
     implementation("androidx.webkit:webkit:1.12.1")
 }
