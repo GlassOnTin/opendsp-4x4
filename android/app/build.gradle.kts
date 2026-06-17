@@ -13,8 +13,15 @@ android {
         targetSdk = 35
         // Version lives in source so any build (CI, F-Droid, local) is deterministic
         // and reproducible — bump these per release, in the same commit you tag.
-        versionCode = 5
-        versionName = "0.2.1"
+        versionCode = 6
+        versionName = "0.2.2"
+    }
+
+    // Don't embed AGP's dependency-metadata signing block — F-Droid rejects it
+    // ("extra signing block 'Dependency metadata'") and it isn't reproducible.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     signingConfigs {
