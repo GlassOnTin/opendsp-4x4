@@ -99,12 +99,18 @@ the `VITE_TARGET=android` base, and `native.test.ts` are in place. `tsc --noEmit
 clean, all 46 tests pass (4 new), and `VITE_TARGET=android vite build` emits relative
 `./assets/…` paths.
 
-**Android side: code written, not yet compiled.** The Gradle project, manifest, USB-host
-layer, bridge, and WebView activity exist under `android/`; `android/build-apk.sh` does the
-web-build → asset-sync → `assembleDebug` chain. Not built here (no Android SDK/Gradle in this
-environment), so the Kotlin is unverified — first build needs the wrapper jar (`gradle wrapper`
-or an Android Studio import).
+**Android side: builds, installs, runs.** The Gradle project, manifest, USB-host layer,
+bridge, and WebView activity are under `android/`; `android/build-apk.sh` runs the
+web-build → asset-sync → `assembleDebug` chain. Built with Gradle 8.11.1 under JDK 17
+(Java 25 is too new for Gradle 8.11), SDK at `~/Android/Sdk`, compileSdk 35. On a Pixel
+the APK installs, launches without crashing, the WebView renders the offline bundle, and
+the web app detects `window.AndroidUsb` (the "WebHID unavailable" banner is suppressed —
+`App.svelte` now treats the native bridge as a supported transport).
 
-**Hardware validation: pending.** The de-risking step (§Validation 1 — can Android `claimInterface`
-this HID device and exchange a level-poll frame) and the on-device flow (§3) still need real
-hardware. Hot-unplug → UI teardown isn't wired on either transport yet (webhid has the same gap).
+**Hardware validation: pending — needs the DSP plugged into the phone via USB-OTG.** The
+de-risking step (§Validation 1 — can Android `claimInterface` this HID device and exchange a
+level-poll frame) and the on-device flow (§3: permission dialog → version handshake → hydrate
+→ meters) are untested; the phone's USB-C was occupied by the adb cable during the above.
+Known gaps: `UsbHid.open()` with no device found leaves the JS `open()` waiting for the 30 s
+timeout (no fast "not found" signal over the connected-boolean bridge); hot-unplug → UI
+teardown isn't wired on either transport (webhid has the same gap).

@@ -1,11 +1,13 @@
 <script lang="ts">
   import { device } from "./state/device.svelte.ts";
+  import { NativeTransport } from "./transport/native.ts";
   import PatchBoard from "./components/PatchBoard.svelte";
   import PresetBar from "./components/PresetBar.svelte";
   import TestTonePanel from "./components/TestTonePanel.svelte";
   import LockDialog from "./components/LockDialog.svelte";
 
-  const supported = typeof navigator !== "undefined" && "hid" in navigator;
+  // Reachable either via WebHID (desktop) or the Android native USB bridge.
+  const supported = NativeTransport.supported() || (typeof navigator !== "undefined" && "hid" in navigator);
   let showSystem = $state(false);
 </script>
 
