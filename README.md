@@ -49,11 +49,11 @@ The protocol is the single source of truth and is implemented per-platform:
   See the [build walkthrough](ANDROID.md) for how it's put together.
 
 ## Repo layout
-- `PROTOCOL.md` — the wire protocol (frame format, command codes, data model).
-- `web/` — TypeScript protocol codec + WebHID app (also bundled into the Android shell).
-- `android/` — WebView shell + Kotlin USB-host layer for the Android USB-OTG build.
-- `ANDROID.md` — how the Android app is built (WebView + USB-bridge walkthrough).
-- `docs/CAPTURING.md` — record a USB session to help add support for more devices.
+- [`PROTOCOL.md`](PROTOCOL.md) — the wire protocol (frame format, command codes, data model).
+- [`web/`](web/) — TypeScript protocol codec + WebHID app (also bundled into the Android shell).
+- [`android/`](android/) — WebView shell + Kotlin USB-host layer for the Android USB-OTG build.
+- [`ANDROID.md`](ANDROID.md) — how the Android app is built (WebView + USB-bridge walkthrough).
+- [`docs/CAPTURING.md`](docs/CAPTURING.md) — record a USB session to help add support for more devices.
 
 ## Support
 openDSP-4x4 is free and AGPL-licensed. If it saved your gig, you can
