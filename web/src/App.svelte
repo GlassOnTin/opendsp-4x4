@@ -2,7 +2,7 @@
   import { device } from "./state/device.svelte.ts";
   import { NativeTransport } from "./transport/native.ts";
   import PatchBoard from "./components/PatchBoard.svelte";
-  import PresetBar from "./components/PresetBar.svelte";
+  import PresetPads from "./components/PresetPads.svelte";
   import TestTonePanel from "./components/TestTonePanel.svelte";
   import LockDialog from "./components/LockDialog.svelte";
 
@@ -14,11 +14,12 @@
 <header class="top">
   <strong>openDSP-4x4</strong><span class="muted"> · t.racks DSP 4x4 Mini Pro</span>
   <span class="spacer"></span>
-  <PresetBar />
   <span class="dot" class:ok={device.connected}></span>
   <span class="status" class:ok={device.connected}>{device.connected ? device.version || device.productName : device.error || "Not connected"}</span>
   <button class="primary" onclick={() => device.connect()}>{device.connected ? "Reconnect…" : "Connect DSP…"}</button>
 </header>
+
+<PresetPads />
 
 {#if !supported}<div class="warn-box">WebHID isn't available — use <b>Chrome</b> or <b>Edge</b> on desktop.</div>{/if}
 

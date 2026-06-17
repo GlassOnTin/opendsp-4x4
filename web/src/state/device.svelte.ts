@@ -19,6 +19,7 @@ export class DeviceStore {
   version = $state("");
   error = $state("");
   presetName = $state("");
+  activePreset = $state(-1); // last-recalled preset slot (highlights its pad); -1 = unknown on connect
   hasDefaults = $state(typeof localStorage !== "undefined" && localStorage.getItem(DEFAULTS_KEY) !== null);
   channels = $state<Channel[]>(makeChannels());
   routing = $state<number[]>([0x01, 0x02, 0x04, 0x08]); // Out1..4 input masks (default diagonal)
@@ -210,7 +211,7 @@ export class DeviceStore {
   setRouting(outIndex: number, mask: number): void { this.routing[outIndex - 0x04] = mask; this.commit(`route${outIndex}`, () => this.dsp!.routing(outIndex, mask), 0); }
 
   // --- global ---
-  recallPreset(slot: number): void { if (this.dsp) void this.dsp.recallPreset(slot); }
+  recallPreset(slot: number): void { if (this.dsp) { this.activePreset = slot; void this.dsp.recallPreset(slot); } }
   storePreset(slot: number): void { if (this.dsp) void this.dsp.storePreset(slot); }
   testTone(source: number, freqIndex = 0): void { if (this.dsp) void this.dsp.testTone(source, freqIndex); }
   setPassword(pw: string): void { if (this.dsp) void this.dsp.setPassword(pw); }
