@@ -15,24 +15,12 @@
   <strong>openDSP-4x4</strong><span class="muted"> · t.racks DSP 4x4 Mini Pro</span>
   <span class="spacer"></span>
   <PresetBar />
-  <button class:on={showSystem} onclick={() => (showSystem = !showSystem)}>System ▾</button>
   <span class="dot" class:ok={device.connected}></span>
   <span class="status" class:ok={device.connected}>{device.connected ? device.version || device.productName : device.error || "Not connected"}</span>
   <button class="primary" onclick={() => device.connect()}>{device.connected ? "Reconnect…" : "Connect DSP…"}</button>
 </header>
 
 {#if !supported}<div class="warn-box">WebHID isn't available — use <b>Chrome</b> or <b>Edge</b> on desktop.</div>{/if}
-{#if showSystem}<div class="system">
-  <TestTonePanel /><div class="vline"></div><LockDialog /><div class="vline"></div>
-  <div class="defaults">
-    <strong class="hd">Defaults <span class="muted">(this browser)</span></strong>
-    <div class="drow">
-      <button onclick={() => device.saveDefaults()} disabled={!device.connected}>Save current</button>
-      <button class="primary" onclick={() => device.restoreDefaults()} disabled={!device.connected || !device.hasDefaults}>Restore</button>
-    </div>
-    <span class="muted">{device.hasDefaults ? "snapshot saved — Restore re-sends it to the DSP" : "no snapshot yet — Save the current setup first"}</span>
-  </div>
-</div>{/if}
 
 <PatchBoard />
 
@@ -40,6 +28,22 @@
   openDSP-4x4 · <a href="https://www.gnu.org/licenses/agpl-3.0.html">AGPL-3.0</a> ·
   <a href="https://github.com/GlassOnTin/opendsp-4x4">source</a> · not affiliated with Thomann
 </footer>
+
+<!-- System lives in a fixed bottom bar to keep the top bar narrow; panel expands upward -->
+<div class="bottombar">
+  {#if showSystem}<div class="system">
+    <TestTonePanel /><div class="vline"></div><LockDialog /><div class="vline"></div>
+    <div class="defaults">
+      <strong class="hd">Defaults <span class="muted">(this browser)</span></strong>
+      <div class="drow">
+        <button onclick={() => device.saveDefaults()} disabled={!device.connected}>Save current</button>
+        <button class="primary" onclick={() => device.restoreDefaults()} disabled={!device.connected || !device.hasDefaults}>Restore</button>
+      </div>
+      <span class="muted">{device.hasDefaults ? "snapshot saved — Restore re-sends it to the DSP" : "no snapshot yet — Save the current setup first"}</span>
+    </div>
+  </div>{/if}
+  <button class="systoggle" class:on={showSystem} onclick={() => (showSystem = !showSystem)}>System {showSystem ? "▾" : "▴"}</button>
+</div>
 
 <style>
   .top { display: flex; align-items: center; gap: .55rem; padding: .6rem 1rem; border-bottom: 1px solid var(--line); background: var(--bg-panel); }
@@ -50,7 +54,11 @@
   .status.ok { color: var(--good); }
   button.on { border-color: var(--accent); }
   .warn-box { margin: .6rem 1rem; background: #4a2b00; color: #ffd9a0; padding: .55rem .8rem; border-radius: var(--radius); }
-  .system { display: flex; gap: 1rem; align-items: center; margin: .6rem 1rem; padding: .7rem .9rem; background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--radius); flex-wrap: wrap; }
+  .bottombar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; flex-direction: column; background: var(--bg-panel); border-top: 1px solid var(--line); }
+  .systoggle { width: 100%; border: none; border-radius: 0; padding: .55rem; background: var(--bg-panel); color: var(--text-dim); font: inherit; }
+  .systoggle.on { color: var(--accent); }
+  :global(body) { padding-bottom: 2.6rem; } /* clear the fixed bar */
+  .system { display: flex; gap: 1rem; align-items: center; padding: .7rem .9rem; border-bottom: 1px solid var(--line); flex-wrap: wrap; max-height: 55vh; overflow: auto; }
   .vline { width: 1px; align-self: stretch; background: var(--line); }
   .defaults { display: flex; flex-direction: column; gap: .45rem; }
   .defaults .hd { font-size: .82rem; color: var(--text-dim); }

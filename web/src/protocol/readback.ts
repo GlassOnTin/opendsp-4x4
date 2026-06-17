@@ -5,12 +5,20 @@
 //    @112/186/260/334). Gain: input @+18, output @+66 (16-bit, level-raw scale).
 import type { Reply } from "./frame.ts";
 
-const LEVEL_FULLSCALE = 72; // approximate; meter is a relative indicator
+// The 0x40 meter byte is a dB-style reading, not linear amplitude: on real
+// hardware an idle channel sits well above zero (~5 inputs, ~30 outputs of 72),
+// so displaying raw/72 leaves the noise floor lit and the scale feels flat. Gate
+// a floor and rescale [FLOOR..TOP] → [0..1] (linear-in-dB, i.e. a normal dB bar).
+const METER_FLOOR = 30; // raw counts at/below the observed idle floor read as silence
+const METER_TOP = 72; // raw counts at/above this read as full scale
 
 /** 8 channel levels (0..1) from a 0x40 reply. Order: In A–D, Out 1–4. */
 export function levelsFromReply(r: Reply): number[] | null {
   if (r.code !== 0x40 || r.data.length < 24) return null;
-  return Array.from({ length: 8 }, (_, i) => Math.min(1, (r.data[2 + 3 * i] ?? 0) / LEVEL_FULLSCALE));
+  return Array.from({ length: 8 }, (_, i) => {
+    const raw = r.data[2 + 3 * i] ?? 0;
+    return Math.max(0, Math.min(1, (raw - METER_FLOOR) / (METER_TOP - METER_FLOOR)));
+  });
 }
 
 // Record field offsets — all probe-verified against known written values (set

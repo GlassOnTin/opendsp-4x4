@@ -4,15 +4,18 @@ import type { Reply } from "../src/protocol/frame.ts";
 import { levelsFromReply, reconstructPresetImage, parsePresetImage } from "../src/protocol/readback.ts";
 
 // 0x40 level reply: 8 channels at data offsets 2,5,8,…,23 (stride 3), order In A–D, Out 1–4.
+// Display maps raw [30..72] → [0..1] (floor gates the idle noise; 72 = full-scale).
 test("levelsFromReply reads 8 channels at stride-3 offsets", () => {
   const data = new Uint8Array(27);
-  const raw = [3, 0, 0, 0, 2, 25, 50, 72]; // In A–D, Out 1–4 (last = full-scale)
+  const raw = [3, 30, 51, 0, 0, 0, 0, 72]; // In A–D, Out 1–4
   raw.forEach((v, i) => { data[2 + 3 * i] = v; });
   const r: Reply = { code: 0x40, data, checksumOk: true };
   const lv = levelsFromReply(r)!;
   assert.equal(lv.length, 8);
-  assert.ok(Math.abs(lv[0]! - 3 / 72) < 1e-9);
-  assert.equal(lv[7], 1); // 72/72 clamps to full-scale
+  assert.equal(lv[0], 0); // raw 3, below floor → silence
+  assert.equal(lv[1], 0); // raw 30, at floor → silence
+  assert.ok(Math.abs(lv[2]! - 0.5) < 1e-9); // raw 51 → mid
+  assert.equal(lv[7], 1); // raw 72 → full-scale
 });
 
 test("levelsFromReply rejects non-0x40 / short replies", () => {

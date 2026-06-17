@@ -107,10 +107,19 @@ the APK installs, launches without crashing, the WebView renders the offline bun
 the web app detects `window.AndroidUsb` (the "WebHID unavailable" banner is suppressed —
 `App.svelte` now treats the native bridge as a supported transport).
 
-**Hardware validation: pending — needs the DSP plugged into the phone via USB-OTG.** The
-de-risking step (§Validation 1 — can Android `claimInterface` this HID device and exchange a
-level-poll frame) and the on-device flow (§3: permission dialog → version handshake → hydrate
-→ meters) are untested; the phone's USB-C was occupied by the adb cable during the above.
+**Hardware validation: works on a Pixel 8 Pro over USB-OTG.** With the DSP on a powered
+USB-C hub, Android matched the device filter (`UsbHostManager: vidpid 0168:0821 … HID`),
+launched the activity via the attach intent, and the app enumerated → `claimInterface(force=true)`
+→ exchanged frames. The version handshake returned `4x4MINIPRO V010` and the 9 channel-state
+pages hydrated (Out1 gain, 7-band PEQ, crossover all populated). That clears §Validation 1
+(de-risk) and §3 through hydrate.
+
+Still to confirm: meters need signal to move (poll loop is wired but unverified live), and the
+write path — toggle a mute / move a PEQ band and confirm the device responds (§3 final step).
+
+Cabling note: a charge-only USB-C OTG adapter fails with the Type-C compliance warning
+`missing data lines` and nothing enumerates; a data-capable hub/adapter is required.
+
 Known gaps: `UsbHid.open()` with no device found leaves the JS `open()` waiting for the 30 s
 timeout (no fast "not found" signal over the connected-boolean bridge); hot-unplug → UI
 teardown isn't wired on either transport (webhid has the same gap).
