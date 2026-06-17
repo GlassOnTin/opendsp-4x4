@@ -3,10 +3,16 @@
 Open-source, cross-platform control software for the **the t.racks DSP 4x4 Mini Pro**
 (a 4-in/4-out XLR DSP that ships with Windows-only editor software).
 
-![openDSP-4x4 web app: a patch-board view with input/output nodes, patch cables, and an interactive 7-band parametric EQ](docs/screenshot.png)
+<p align="center">
+  <img src="docs/img/android-hero.png" width="300"
+       alt="openDSP-4x4 on an Android phone over USB-OTG: coloured preset pads, four input and four output channel strips, and a routing matrix">
+</p>
 
-**[▶ Open the web app](https://glassontin.github.io/opendsp-4x4/)** — runs entirely in
-Chrome/Edge over WebHID; nothing to install. Plug the DSP in over USB and click *Connect*.
+**[▶ Open the web app](https://glassontin.github.io/opendsp-4x4/)** — desktop Chrome/Edge over
+WebHID; nothing to install. &nbsp;·&nbsp; **[⬇ Android APK](https://github.com/GlassOnTin/opendsp-4x4/releases/latest)** —
+phone/tablet over USB-OTG. &nbsp;Plug the DSP in and tap *Connect*.
+
+![openDSP-4x4 web app: a patch-board view with input/output nodes, patch cables, and an interactive 7-band parametric EQ](docs/screenshot.png)
 
 Goals:
 - **Portable GUI** on desktop (Linux/Windows/macOS) and **Android over USB-OTG** — control
@@ -16,7 +22,7 @@ Goals:
 - Clean, strongly-typed, well-separated codebase; everything driven by one documented
   protocol.
 
-## Status — WebHID app working and verified on hardware.
+## Status — desktop (WebHID) and Android (USB-OTG) apps both working and verified on hardware.
 
 The device is a USB-HID device (`0168:0821`) using 64-byte interrupt reports. The control
 protocol was developed **clean-room**, by observing the device's USB-HID traffic and probing
@@ -27,12 +33,17 @@ The protocol is the single source of truth and is implemented per-platform:
   gain/mute/polarity, 7-band PEQ, crossovers, compressor, gate, delay, presets, live meters
   and full device-state readback are implemented and **live-verified on the hardware**.
   Known gaps: PEQ Q scaling is provisional and gate timing isn't yet calibrated to ms.
-- **KMP + Compose app** — Kotlin Multiplatform for **Android (USB-OTG)** + desktop. The only
-  path that reaches the device on Android. *(planned — reuses the same protocol spec)*
+- **`android/`** — a thin **WebView** shell that loads the same web UI (bundled offline) and
+  supplies USB-host byte I/O through a small Kotlin layer + a JS bridge — the only path that
+  reaches the device on Android (WebHID is desktop-only; WebUSB blocks the HID class). Built,
+  released (`v0.2.0`) and **verified on a Pixel 8 Pro over USB-OTG**: permission, version
+  handshake, state readback, preset recall, routing and meters. See [`ANDROID.md`](ANDROID.md).
 
 ## Repo layout
 - `PROTOCOL.md` — the wire protocol (frame format, command codes, data model).
-- `web/` — TypeScript protocol codec + WebHID app.
+- `web/` — TypeScript protocol codec + WebHID app (also bundled into the Android shell).
+- `android/` — WebView shell + Kotlin USB-host layer for the Android USB-OTG build.
+- `ANDROID.md` — Android port design notes and on-device validation.
 - `docs/CAPTURING.md` — record a USB session to help add support for more devices.
 
 ## Legal
