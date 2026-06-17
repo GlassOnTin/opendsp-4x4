@@ -41,6 +41,10 @@ jobs:
           java-version: "17"
           cache: gradle
 
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: "platforms;android-35 build-tools;35.0.0"
+
       - name: Build + verify web bundle (Android mode)
         working-directory: web
         run: |
@@ -54,11 +58,6 @@ jobs:
           rm -rf android/app/src/main/assets/www
           mkdir -p android/app/src/main/assets/www
           cp -r web/dist/. android/app/src/main/assets/www/
-
-      - name: Ensure Android SDK packages
-        run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" >/dev/null
 
       - name: Decode signing keystore
         if: env.KEYSTORE_BASE64 != ''
