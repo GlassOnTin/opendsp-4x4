@@ -1,16 +1,17 @@
 # F-Droid build recipe for openDSP-4x4.
 #
-# Submitted to F-Droid's metadata repo as a merge request:
+# This is a reference copy of the metadata submitted to F-Droid's metadata repo:
 #   1. Fork  https://gitlab.com/fdroid/fdroiddata
 #   2. Copy this file to  metadata/net.opendsp.x4x4.yml
-#   3. Run  fdroid rewritemeta net.opendsp.x4x4   (drops this comment header)
-#   4. Test:  fdroid build net.opendsp.x4x4:4
-#   5. Open the MR.
+#   3. Add  srclibs/rollup.yml  (esbuild already exists upstream); see srclibs below.
+#   4. Run  fdroid rewritemeta net.opendsp.x4x4   (strips these comments)
+#   5. Test:  fdroid build net.opendsp.x4x4:6
+#   6. Open the MR.
 #
 # No prebuilt binaries: Vite pulls two prebuilt native binaries from npm — esbuild
-# (Go) and Rollup 4's parser (Rust/napi). This recipe builds BOTH from source at
-# the pinned upstream tags and makes Vite use them, then removes node_modules and
-# the build-tool checkouts (they're build intermediates, not part of the APK).
+# (Go) and Rollup 4's parser (Rust/napi). This recipe builds BOTH from source via
+# F-Droid srclibs (esbuild@v0.25.12, rollup@v4.62.0) and makes Vite use them, then
+# removes node_modules (a build intermediate, not part of the APK).
 # Verified locally: a `vite build` driven by the from-source esbuild AND the
 # from-source Rollup native produces a BYTE-IDENTICAL bundle to the stock one — so
 # there is no `scanignore`.
@@ -19,6 +20,10 @@
 # rust-toolchain.toml — rustup auto-installs it); the SWC compile is heavy (~1 min,
 # a few GB RAM). If apt's `rustup` isn't available on the builder, install rustup
 # upstream instead.
+#
+# srclibs/rollup.yml:
+#   RepoType: git
+#   Repo: https://github.com/rollup/rollup.git
 
 Categories:
   - Connectivity
@@ -43,7 +48,7 @@ Repo: https://github.com/GlassOnTin/opendsp-4x4.git
 Builds:
   - versionName: 0.2.2
     versionCode: 6
-    commit: v0.2.2
+    commit: 361096a4d27582029cc4739a689fc8dea133de4d
     subdir: android/app
     sudo:
       - apt-get update
@@ -55,22 +60,26 @@ Builds:
       - tar xzf node.tar.gz --strip-components=1 -C /usr/local/
     gradle:
       - yes
+    # esbuild srclib already exists upstream; rollup srclib added with this MR.
+    # fdroidserver checks each out and substitutes $$name$$ with its absolute path.
+    srclibs:
+      - esbuild@v0.25.12
+      - rollup@v4.62.0
     prebuild:
-      # esbuild from Go source
-      - git clone --depth 1 --branch v0.25.12 https://github.com/evanw/esbuild ../../esbuild-src
-      - ( cd ../../esbuild-src && go build ./cmd/esbuild )
+      # esbuild from Go source. (Commands are ';'-joined under 'set -e', so no '&&'.)
+      - ( cd $$esbuild$$ ; go build ./cmd/esbuild )
       # Rollup 4 native parser from Rust source (rustup auto-installs the pinned nightly)
-      - git clone --depth 1 --branch v4.62.0 https://github.com/rollup/rollup ../../rollup-src
-      - ( cd ../../rollup-src && npm install --no-save --no-audit --no-fund @napi-rs/cli@3.4.1 && ./node_modules/.bin/napi build --cwd rust/bindings_napi --platform --release --no-js --dts native.d.ts --output-dir ../.. --package-json-path ../../package.json )
+      - ( cd $$rollup$$ ; npm install --no-save --no-audit --no-fund @napi-rs/cli@3.4.1 ; ./node_modules/.bin/napi build --cwd rust/bindings_napi --platform --release --no-js --dts native.d.ts --output-dir ../.. --package-json-path ../../package.json )
       # install web deps (no esbuild postinstall download), swap in the from-source binaries
-      - ( cd ../../web && npm ci --ignore-scripts )
+      - ( cd ../../web ; npm ci --ignore-scripts )
       - rm -f ../../web/node_modules/esbuild/bin/esbuild ../../web/node_modules/@esbuild/*/bin/esbuild
-      - cp -f ../../rollup-src/rollup.linux-x64-gnu.node ../../web/node_modules/@rollup/rollup-linux-x64-gnu/rollup.linux-x64-gnu.node
+      - cp -f $$rollup$$/rollup.linux-x64-gnu.node ../../web/node_modules/@rollup/rollup-linux-x64-gnu/rollup.linux-x64-gnu.node
       # build the bundle with the from-source esbuild, sync into app assets
-      - ( cd ../../web && ESBUILD_BINARY_PATH="$(cd ../esbuild-src && pwd)/esbuild" VITE_TARGET=android npm run build )
-      - mkdir -p src/main/assets/www && cp -a ../../web/dist/. src/main/assets/www/
-      # remove build intermediates (none of this is in the APK)
-      - rm -rf ../../esbuild-src ../../rollup-src ../../web/node_modules
+      - ( cd ../../web ; ESBUILD_BINARY_PATH="$$esbuild$$/esbuild" VITE_TARGET=android npm run build )
+      - mkdir -p src/main/assets/www
+      - cp -a ../../web/dist/. src/main/assets/www/
+      # node_modules is a build intermediate, not part of the APK
+      - rm -rf ../../web/node_modules
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
